@@ -1,24 +1,80 @@
-// Import necessary hooks and functions from React.
-import { useContext, useReducer, createContext } from "react";
-import storeReducer, { initialStore } from "../store"  // Import the reducer and the initial state.
+import React, { createContext, useReducer } from "react";
+import storeReducer, { initialStore } from "../store";
 
-// Create a context to hold the global state of the application
-// We will call this global state the "store" to avoid confusion while using local states
-const StoreContext = createContext()
+export const Context = createContext(null);
 
-// Define a provider component that encapsulates the store and warps it in a context provider to 
-// broadcast the information throught all the app pages and components.
-export function StoreProvider({ children }) {
-    // Initialize reducer with the initial state.
-    const [store, dispatch] = useReducer(storeReducer, initialStore())
-    // Provide the store and dispatch method to all child components.
-    return <StoreContext.Provider value={{ store, dispatch }}>
-        {children}
-    </StoreContext.Provider>
-}
+export const ContextProvider = ({ children }) => {
 
-// Custom hook to access the global state and dispatch function.
-export default function useGlobalReducer() {
-    const { dispatch, store } = useContext(StoreContext)
-    return { dispatch, store };
-}
+  const [store, dispatch] = useReducer(storeReducer, initialStore());
+
+  const AGENDA = "akristhiam93";
+  const API_URL = `https://playground.4geeks.com/contact/agendas/${AGENDA}/contacts`;
+
+  // GET CONTACTS
+  const getContacts = async () => {
+
+  const check = await fetch(`https://playground.4geeks.com/contact/agendas/${AGENDA}`);
+
+  if (check.status === 404) {
+    await fetch(`https://playground.4geeks.com/contact/agendas/${AGENDA}`, {
+      method: "POST"
+    });
+  }
+
+  const resp = await fetch(API_URL);
+  const data = await resp.json();
+
+  dispatch({
+    type: "set_contacts",
+    payload: data.contacts || []
+  });
+};
+
+  // ADD CONTACT
+  const addContact = async (contact) => {
+
+    await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(contact)
+    });
+
+    getContacts();
+  };
+
+  // DELETE CONTACT
+  const deleteContact = async (id) => {
+
+    await fetch(`${API_URL}/${id}`, {
+      method: "DELETE"
+    });
+
+    getContacts();
+  };
+
+  // UPDATE CONTACT
+  const updateContact = async (id, contact) => {
+
+    await fetch(`${API_URL}/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(contact)
+    });
+
+    getContacts();
+  };
+
+  return (
+    <Context.Provider value={{
+      store,
+      actions: {
+        getContacts,
+        addContact,
+        deleteContact,
+        updateContact
+      }
+    }}>
+      {children}
+    </Context.Provider>
+  );
+};
